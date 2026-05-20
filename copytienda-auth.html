@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CopyTienda — Acceso</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --green: #1D9E75;
+  --green-dark: #0F6E56;
+  --green-light: #E1F5EE;
+  --black: #0E0E0E;
+  --white: #FAFAF8;
+  --gray: #6B6B6B;
+  --gray-light: #F0EFE9;
+  --gray-border: #E2E1DA;
+  --red: #E24B4A;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--white);
+  color: var(--black);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.bg-blob1 { position:fixed;top:-150px;right:-150px;z-index:0;width:500px;height:500px;background:radial-gradient(ellipse,rgba(29,158,117,0.10) 0%,transparent 70%);border-radius:50%;pointer-events:none; }
+.bg-blob2 { position:fixed;bottom:-100px;left:-100px;z-index:0;width:400px;height:400px;background:radial-gradient(ellipse,rgba(29,158,117,0.06) 0%,transparent 70%);border-radius:50%;pointer-events:none; }
+.card {
+  position:relative;z-index:1;width:100%;max-width:440px;
+  background:var(--white);border:0.5px solid var(--gray-border);
+  border-radius:24px;padding:40px 40px 36px;
+  box-shadow:0 4px 40px rgba(0,0,0,0.06);
+  animation:cardIn .5s ease both;
+}
+@keyframes cardIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+.logo { display:flex;align-items:center;gap:8px;margin-bottom:32px; }
+.logo-icon { width:30px;height:30px;background:var(--green);border-radius:8px;display:flex;align-items:center;justify-content:center; }
+.logo-icon svg { width:14px;height:14px;fill:white; }
+.logo-text { font-family:'Syne',sans-serif;font-weight:700;font-size:17px;color:var(--black); }
+.logo-text span { color:var(--green); }
+.tabs { display:flex;background:var(--gray-light);border-radius:12px;padding:4px;margin-bottom:28px; }
+.tab { flex:1;padding:9px;border:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:400;color:var(--gray);cursor:pointer;border-radius:9px;transition:all .2s; }
+.tab.active { background:var(--white);color:var(--black);font-weight:500;box-shadow:0 1px 4px rgba(0,0,0,0.08); }
+.form-title { font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--black);margin-bottom:6px; }
+.form-sub { font-size:13px;color:var(--gray);margin-bottom:24px;line-height:1.5; }
+.field { margin-bottom:16px; }
+.field label { display:block;font-size:12px;font-weight:500;color:var(--black);margin-bottom:6px; }
+.field input { width:100%;padding:11px 14px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--black);background:var(--white);border:1px solid var(--gray-border);border-radius:10px;outline:none;transition:border-color .2s; }
+.field input:focus { border-color:var(--green); }
+.field input.error { border-color:var(--red); }
+.field-error { font-size:11px;color:var(--red);margin-top:4px;display:none; }
+.field-error.visible { display:block; }
+.plan-selector { margin-bottom:20px; }
+.plan-selector label { display:block;font-size:12px;font-weight:500;color:var(--black);margin-bottom:8px; }
+.plans { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+.plan-opt { border:1px solid var(--gray-border);border-radius:10px;padding:10px 12px;cursor:pointer;transition:all .2s;position:relative; }
+.plan-opt input { position:absolute;opacity:0; }
+.plan-opt.selected { border-color:var(--green);background:var(--green-light); }
+.plan-name { font-size:13px;font-weight:500;color:var(--black); }
+.plan-price { font-size:12px;color:var(--gray);margin-top:1px; }
+.plan-opt.selected .plan-name { color:var(--green-dark); }
+.plan-badge { display:inline-block;background:var(--green);color:white;font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;margin-left:4px;vertical-align:middle; }
+.trial-note { display:flex;align-items:flex-start;gap:8px;background:var(--green-light);border-radius:10px;padding:10px 12px;margin-bottom:20px;font-size:12px;color:var(--green-dark);line-height:1.5; }
+.trial-note svg { width:14px;height:14px;flex-shrink:0;margin-top:1px;fill:var(--green); }
+.btn-submit { width:100%;padding:13px;background:var(--black);color:var(--white);font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;border:none;border-radius:50px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;margin-bottom:16px; }
+.btn-submit:hover { background:var(--green-dark); }
+.btn-submit:disabled { opacity:.6;cursor:not-allowed; }
+.spinner { width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+.divider { display:flex;align-items:center;gap:12px;margin-bottom:16px; }
+.divider span { font-size:12px;color:var(--gray);white-space:nowrap; }
+.divider::before,.divider::after { content:'';flex:1;height:1px;background:var(--gray-border); }
+.btn-google { width:100%;padding:11px;background:var(--white);color:var(--black);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:400;border:1px solid var(--gray-border);border-radius:50px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:border-color .2s;margin-bottom:20px; }
+.btn-google:hover { border-color:var(--black); }
+.btn-google svg { width:18px;height:18px;flex-shrink:0; }
+.footer-note { font-size:11px;color:var(--gray);text-align:center;line-height:1.6; }
+.footer-note a { color:var(--green-dark);text-decoration:none; }
+.global-error { background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:10px 14px;font-size:13px;color:#991B1B;margin-bottom:16px;display:none; }
+.global-error.visible { display:block; }
+.global-success { background:var(--green-light);border:1px solid rgba(29,158,117,0.3);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--green-dark);margin-bottom:16px;display:none; }
+.global-success.visible { display:block; }
+
+/* PAYMENT MODAL */
+.modal-overlay { display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;padding:20px; }
+.modal-overlay.open { display:flex;animation:fadeIn .2s ease; }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+.modal { background:var(--white);border-radius:24px;width:100%;max-width:420px;padding:32px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.15);animation:modalIn .3s ease; }
+@keyframes modalIn { from{opacity:0;transform:scale(.96)} to{opacity:1;transform:none} }
+.modal-close { position:absolute;top:16px;right:16px;width:28px;height:28px;border-radius:50%;border:1px solid var(--gray-border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--gray);transition:all .2s; }
+.modal-close:hover { background:var(--gray-light); }
+.modal-title { font-family:'Syne',sans-serif;font-size:20px;font-weight:700;margin-bottom:6px; }
+.modal-sub { font-size:13px;color:var(--gray);margin-bottom:24px; }
+.payment-methods { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px; }
+.pay-btn { border:1.5px solid var(--gray-border);border-radius:12px;padding:14px 12px;cursor:pointer;transition:all .2s;background:var(--white);display:flex;flex-direction:column;align-items:center;gap:6px; }
+.pay-btn:hover { border-color:var(--green); }
+.pay-btn.selected { border-color:var(--green);background:var(--green-light); }
+.pay-icon { font-size:24px; }
+.pay-name { font-size:12px;font-weight:500;color:var(--black); }
+.pay-desc { font-size:10px;color:var(--gray);text-align:center; }
+.order-summary { background:var(--gray-light);border-radius:12px;padding:14px 16px;margin-bottom:20px; }
+.order-row { display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:3px 0; }
+.order-row.total { font-weight:500;font-size:15px;border-top:1px solid var(--gray-border);margin-top:8px;padding-top:10px; }
+.order-row span:first-child { color:var(--gray); }
+.order-row.total span:first-child { color:var(--black); }
+.secure-note { display:flex;align-items:center;gap:6px;font-size:11px;color:var(--gray);margin-bottom:16px; }
+.secure-note svg { width:12px;height:12px;flex-shrink:0;fill:var(--gray); }
+
+/* DASHBOARD */
+.dashboard { display:none;width:100%;max-width:700px;animation:cardIn .5s ease both; }
+.dash-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:28px; }
+.dash-logo { display:flex;align-items:center;gap:8px; }
+.dash-logo-icon { width:28px;height:28px;background:var(--green);border-radius:7px;display:flex;align-items:center;justify-content:center; }
+.dash-logo-icon svg { width:12px;height:12px;fill:white; }
+.dash-logo-text { font-family:'Syne',sans-serif;font-weight:700;font-size:16px; }
+.dash-logo-text span { color:var(--green); }
+.dash-user { display:flex;align-items:center;gap:8px;font-size:13px;color:var(--gray); }
+.dash-avatar { width:30px;height:30px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:white;font-family:'Syne',sans-serif; }
+.dash-greeting { font-family:'Syne',sans-serif;font-size:24px;font-weight:700;margin-bottom:6px; }
+.dash-sub { font-size:14px;color:var(--gray);margin-bottom:24px; }
+.dash-stats { display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px; }
+.stat-card { background:var(--white);border:0.5px solid var(--gray-border);border-radius:16px;padding:16px 18px; }
+.stat-n { font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--black); }
+.stat-l { font-size:12px;color:var(--gray);margin-top:2px; }
+.stat-bar { height:3px;background:var(--gray-border);border-radius:2px;margin-top:10px;overflow:hidden; }
+.stat-bar-fill { height:100%;background:var(--green);border-radius:2px; }
+.btn-go { width:100%;padding:14px;background:var(--black);color:var(--white);font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;border:none;border-radius:50px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;text-decoration:none;margin-bottom:12px; }
+.btn-go:hover { background:var(--green-dark); }
+.btn-logout { width:100%;padding:11px;background:transparent;color:var(--gray);font-family:'DM Sans',sans-serif;font-size:13px;border:1px solid var(--gray-border);border-radius:50px;cursor:pointer;transition:all .2s; }
+.btn-logout:hover { border-color:var(--red);color:var(--red); }
+.trial-banner { display:flex;align-items:center;gap:10px;background:var(--green-light);border:1px solid rgba(29,158,117,0.2);border-radius:12px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:var(--green-dark); }
+.trial-banner strong { font-weight:500; }
+</style>
+</head>
+<body>
+<div class="bg-blob1"></div>
+<div class="bg-blob2"></div>
+
+<!-- AUTH CARD -->
+<div class="card" id="auth-card">
+  <div class="logo">
+    <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+    <div class="logo-text"><span>Copy</span>Tienda</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('login')">Iniciar sesión</button>
+    <button class="tab" onclick="switchTab('register')">Crear cuenta</button>
+  </div>
+
+  <!-- LOGIN -->
+  <div id="login-form">
+    <div class="form-title">Bienvenido de nuevo</div>
+    <div class="form-sub">Ingresa a tu cuenta para seguir generando contenido.</div>
+    <div class="global-error" id="login-error"></div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="tu@email.com">
+      <div class="field-error" id="login-email-err">Ingresa un email válido</div>
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••">
+      <div class="field-error" id="login-pass-err">Ingresa tu contraseña</div>
+    </div>
+    <button class="btn-submit" onclick="handleLogin()" id="login-btn">
+      <span id="login-btn-text">Ingresar</span>
+    </button>
+    <div class="divider"><span>o continúa con</span></div>
+    <button class="btn-google" onclick="handleGoogle()">
+      <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Continuar con Google
+    </button>
+    <div class="footer-note">¿No tienes cuenta? <a href="#" onclick="switchTab('register');return false">Créala gratis</a></div>
+  </div>
+
+  <!-- REGISTER -->
+  <div id="register-form" style="display:none">
+    <div class="form-title">Empieza gratis</div>
+    <div class="form-sub">7 días de prueba sin tarjeta de crédito.</div>
+    <div class="global-error" id="reg-error"></div>
+    <div class="global-success" id="reg-success"></div>
+    <div class="trial-note">
+      <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      7 días gratis incluidos. No se cobra nada hasta que termine la prueba.
+    </div>
+    <div class="field">
+      <label>Nombre</label>
+      <input type="text" id="reg-name" placeholder="Tu nombre">
+      <div class="field-error" id="reg-name-err">Ingresa tu nombre</div>
+    </div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="reg-email" placeholder="tu@email.com">
+      <div class="field-error" id="reg-email-err">Ingresa un email válido</div>
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="reg-pass" placeholder="Mínimo 8 caracteres">
+      <div class="field-error" id="reg-pass-err">Mínimo 8 caracteres</div>
+    </div>
+    <div class="plan-selector">
+      <label>Elige tu plan</label>
+      <div class="plans">
+        <div class="plan-opt selected" id="plan-monthly" onclick="selectPlan('monthly')">
+          <input type="radio" name="plan" value="monthly" checked>
+          <div class="plan-name">Mensual <span class="plan-badge">POPULAR</span></div>
+          <div class="plan-price">$29 USD/mes</div>
+        </div>
+        <div class="plan-opt" id="plan-annual" onclick="selectPlan('annual')">
+          <input type="radio" name="plan" value="annual">
+          <div class="plan-name">Anual <span class="plan-badge" style="background:#BA7517">-43%</span></div>
+          <div class="plan-price">$199 USD/año</div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-submit" onclick="handleRegister()" id="reg-btn">
+      <span id="reg-btn-text">Empezar prueba gratis</span>
+    </button>
+    <div class="divider"><span>o regístrate con</span></div>
+    <button class="btn-google" onclick="handleGoogle()">
+      <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Continuar con Google
+    </button>
+    <div class="footer-note">Al registrarte aceptás los <a href="#">Términos de servicio</a> y la <a href="#">Política de privacidad</a></div>
+  </div>
+</div>
+
+<!-- PAYMENT MODAL -->
+<div class="modal-overlay" id="pay-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <div class="modal-title">Elige cómo pagar</div>
+    <div class="modal-sub">Empieza con 7 días gratis. Solo se cobra después.</div>
+    <div class="payment-methods">
+      <div class="pay-btn selected" id="pay-stripe" onclick="selectPayment('stripe')">
+        <div class="pay-icon">💳</div>
+        <div class="pay-name">Tarjeta</div>
+        <div class="pay-desc">Visa, Mastercard, Amex</div>
+      </div>
+      <div class="pay-btn" id="pay-mp" onclick="selectPayment('mercadopago')">
+        <div class="pay-icon">🏦</div>
+        <div class="pay-name">MercadoPago</div>
+        <div class="pay-desc">Transferencia, débito</div>
+      </div>
+    </div>
+    <div class="order-summary">
+      <div class="order-row"><span>Plan</span><span id="summary-plan">Mensual · $29 USD</span></div>
+      <div class="order-row"><span>Prueba gratis</span><span>7 días</span></div>
+      <div class="order-row"><span>Se cobra desde</span><span id="summary-date">—</span></div>
+      <div class="order-row total"><span>Hoy pagas</span><span style="color:var(--green)">$0</span></div>
+    </div>
+    <div class="secure-note">
+      <svg viewBox="0 0 24 24"><path d="M12 2l9 4v6c0 5-3.9 9.7-9 11-5.1-1.3-9-6-9-11V6l9-4z"/></svg>
+      Pago 100% seguro. Cancelá cuando quieras.
+    </div>
+    <button class="btn-submit" onclick="handlePayment()" id="pay-btn">
+      <span id="pay-btn-text">Activar prueba gratis →</span>
+    </button>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="dashboard" id="dashboard">
+  <div class="dash-header">
+    <div class="dash-logo">
+      <div class="dash-logo-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+      <div class="dash-logo-text"><span>Copy</span>Tienda</div>
+    </div>
+    <div class="dash-user">
+      <div class="dash-avatar" id="dash-avatar">?</div>
+      <span id="dash-username">Usuario</span>
+    </div>
+  </div>
+  <div class="trial-banner">
+    <span>🎉</span>
+    <span><strong>Cuenta creada con éxito.</strong> Tenés 7 días de prueba gratis activados.</span>
+  </div>
+  <div class="dash-greeting">¡Hola, <span id="dash-name"></span>! 👋</div>
+  <div class="dash-sub">Tu cuenta está lista. Ya podés generar contenido para tus productos.</div>
+  <div class="dash-stats">
+    <div class="stat-card">
+      <div class="stat-n">30</div>
+      <div class="stat-l">Generaciones disponibles</div>
+      <div class="stat-bar"><div class="stat-bar-fill" style="width:100%"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-n">5</div>
+      <div class="stat-l">Plataformas incluidas</div>
+      <div class="stat-bar"><div class="stat-bar-fill" style="width:100%"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-n">7</div>
+      <div class="stat-l">Días de prueba</div>
+      <div class="stat-bar"><div class="stat-bar-fill" style="width:100%"></div></div>
+    </div>
+  </div>
+  <a href="copytienda-app.html" class="btn-go">⚡ Ir al generador de contenido</a>
+  <button class="btn-logout" onclick="handleLogout()">Cerrar sesión</button>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://psvvpkhwskremvdpeyya.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzdnZwa2h3c2tyZW12ZHBleXlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyMzQ2OTcsImV4cCI6MjA5NDgxMDY5N30.A5ezDilRLyKf_UmZ8mNJQpkUzU5cWJf0Gi30kTvLMkc';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let selectedPlan = 'monthly';
+let selectedPayment = 'stripe';
+let pendingUser = null;
+
+// Check session on load
+window.addEventListener('load', async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) showDashboard(session.user);
+});
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='register'));
+  });
+  document.getElementById('login-form').style.display = tab==='login'?'block':'none';
+  document.getElementById('register-form').style.display = tab==='register'?'block':'none';
+}
+
+function selectPlan(plan) {
+  selectedPlan = plan;
+  document.getElementById('plan-monthly').classList.toggle('selected', plan==='monthly');
+  document.getElementById('plan-annual').classList.toggle('selected', plan==='annual');
+  document.getElementById('summary-plan').textContent = plan==='monthly'?'Mensual · $29 USD':'Anual · $199 USD';
+}
+
+function selectPayment(method) {
+  selectedPayment = method;
+  document.getElementById('pay-stripe').classList.toggle('selected', method==='stripe');
+  document.getElementById('pay-mp').classList.toggle('selected', method==='mercadopago');
+}
+
+function validateEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+
+function showErr(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+function hideErr(id) { document.getElementById(id).classList.remove('visible'); }
+
+async function handleLogin() {
+  hideErr('login-error');
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  let valid = true;
+
+  if (!validateEmail(email)) { document.getElementById('login-email').classList.add('error'); document.getElementById('login-email-err').classList.add('visible'); valid=false; }
+  else { document.getElementById('login-email').classList.remove('error'); document.getElementById('login-email-err').classList.remove('visible'); }
+  if (!pass) { document.getElementById('login-pass').classList.add('error'); document.getElementById('login-pass-err').classList.add('visible'); valid=false; }
+  else { document.getElementById('login-pass').classList.remove('error'); document.getElementById('login-pass-err').classList.remove('visible'); }
+  if (!valid) return;
+
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div>';
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+
+  if (error) {
+    btn.disabled = false;
+    btn.innerHTML = '<span>Ingresar</span>';
+    showErr('login-error', 'Email o contraseña incorrectos. Verificá tus datos.');
+    return;
+  }
+  showDashboard(data.user);
+}
+
+async function handleRegister() {
+  hideErr('reg-error');
+  hideErr('reg-success');
+  const name = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const pass = document.getElementById('reg-pass').value;
+  let valid = true;
+
+  if (!name) { document.getElementById('reg-name').classList.add('error'); document.getElementById('reg-name-err').classList.add('visible'); valid=false; }
+  else { document.getElementById('reg-name').classList.remove('error'); document.getElementById('reg-name-err').classList.remove('visible'); }
+  if (!validateEmail(email)) { document.getElementById('reg-email').classList.add('error'); document.getElementById('reg-email-err').classList.add('visible'); valid=false; }
+  else { document.getElementById('reg-email').classList.remove('error'); document.getElementById('reg-email-err').classList.remove('visible'); }
+  if (pass.length < 8) { document.getElementById('reg-pass').classList.add('error'); document.getElementById('reg-pass-err').classList.add('visible'); valid=false; }
+  else { document.getElementById('reg-pass').classList.remove('error'); document.getElementById('reg-pass-err').classList.remove('visible'); }
+  if (!valid) return;
+
+  const chargeDate = new Date();
+  chargeDate.setDate(chargeDate.getDate()+7);
+  document.getElementById('summary-date').textContent = chargeDate.toLocaleDateString('es-AR',{day:'numeric',month:'long'});
+  document.getElementById('summary-plan').textContent = selectedPlan==='monthly'?'Mensual · $29 USD':'Anual · $199 USD';
+
+  pendingUser = { name, email, pass, plan: selectedPlan };
+  document.getElementById('pay-modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('pay-modal').classList.remove('open');
+}
+
+async function handlePayment() {
+  const btn = document.getElementById('pay-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div>';
+
+  const { data, error } = await sb.auth.signUp({
+    email: pendingUser.email,
+    password: pendingUser.pass,
+    options: {
+      data: {
+        full_name: pendingUser.name,
+        plan: pendingUser.plan,
+        credits: 30,
+        trial_start: new Date().toISOString(),
+        payment_method: selectedPayment
+      }
+    }
+  });
+
+  if (error) {
+    btn.disabled = false;
+    btn.innerHTML = '<span>Activar prueba gratis →</span>';
+    closeModal();
+    showErr('reg-error', error.message === 'User already registered'
+      ? 'Este email ya tiene una cuenta. Iniciá sesión.'
+      : 'Hubo un error al crear la cuenta. Intentá de nuevo.');
+    return;
+  }
+
+  closeModal();
+
+  if (data.session) {
+    showDashboard(data.user);
+  } else {
+    document.getElementById('reg-success').textContent = '✅ ¡Cuenta creada! Revisá tu email para confirmar y luego iniciá sesión.';
+    document.getElementById('reg-success').classList.add('visible');
+    btn.disabled = false;
+    btn.innerHTML = '<span>Activar prueba gratis →</span>';
+  }
+}
+
+async function handleGoogle() {
+  await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.href }
+  });
+}
+
+async function handleLogout() {
+  await sb.auth.signOut();
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('auth-card').style.display = 'block';
+  switchTab('login');
+}
+
+function showDashboard(user) {
+  document.getElementById('auth-card').style.display = 'none';
+  const dash = document.getElementById('dashboard');
+  dash.style.display = 'block';
+  const name = user.user_metadata?.full_name || user.email.split('@')[0];
+  const firstName = name.split(' ')[0];
+  document.getElementById('dash-name').textContent = firstName;
+  document.getElementById('dash-avatar').textContent = firstName.charAt(0).toUpperCase();
+  document.getElementById('dash-username').textContent = firstName;
+}
+</script>
+</body>
+</html>

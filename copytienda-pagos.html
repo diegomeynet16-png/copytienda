@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CopyTienda — Activar suscripción</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://sdk.mercadopago.com/js/v2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --green: #1D9E75;
+  --green-dark: #0F6E56;
+  --green-light: #E1F5EE;
+  --black: #0E0E0E;
+  --white: #FAFAF8;
+  --gray: #6B6B6B;
+  --gray-light: #F0EFE9;
+  --gray-border: #E2E1DA;
+  --red: #E24B4A;
+  --mp-blue: #009EE3;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--white);
+  color: var(--black);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.bg-blob1 { position:fixed;top:-150px;right:-150px;z-index:0;width:500px;height:500px;background:radial-gradient(ellipse,rgba(29,158,117,0.10) 0%,transparent 70%);border-radius:50%;pointer-events:none; }
+.bg-blob2 { position:fixed;bottom:-100px;left:-100px;z-index:0;width:400px;height:400px;background:radial-gradient(ellipse,rgba(29,158,117,0.06) 0%,transparent 70%);border-radius:50%;pointer-events:none; }
+
+.wrap { position:relative;z-index:1;width:100%;max-width:480px; }
+
+.logo { display:flex;align-items:center;gap:8px;margin-bottom:28px; }
+.logo-icon { width:30px;height:30px;background:var(--green);border-radius:8px;display:flex;align-items:center;justify-content:center; }
+.logo-icon svg { width:14px;height:14px;fill:white; }
+.logo-text { font-family:'Syne',sans-serif;font-weight:700;font-size:17px; }
+.logo-text span { color:var(--green); }
+
+/* STEP INDICATOR */
+.steps-bar { display:flex;align-items:center;gap:0;margin-bottom:32px; }
+.step-item { display:flex;align-items:center;gap:8px;flex:1; }
+.step-dot { width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;font-family:'Syne',sans-serif;flex-shrink:0;transition:all .3s; }
+.step-dot.done { background:var(--green);color:white; }
+.step-dot.active { background:var(--black);color:white; }
+.step-dot.pending { background:var(--gray-light);color:var(--gray);border:1px solid var(--gray-border); }
+.step-label { font-size:12px;color:var(--gray); }
+.step-label.active { color:var(--black);font-weight:500; }
+.step-line { flex:1;height:1px;background:var(--gray-border);margin:0 8px; }
+
+/* CARDS */
+.card { background:var(--white);border:0.5px solid var(--gray-border);border-radius:20px;padding:28px;margin-bottom:16px;animation:cardIn .4s ease both; }
+@keyframes cardIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+
+.card-title { font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:4px; }
+.card-sub { font-size:13px;color:var(--gray);margin-bottom:20px;line-height:1.5; }
+
+/* PLAN CARDS */
+.plan-cards { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px; }
+.plan-card { border:1.5px solid var(--gray-border);border-radius:14px;padding:16px;cursor:pointer;transition:all .2s;position:relative; }
+.plan-card:hover { border-color:var(--green); }
+.plan-card.selected { border-color:var(--green);background:var(--green-light); }
+.plan-card.selected::after { content:'✓';position:absolute;top:10px;right:12px;font-size:13px;color:var(--green);font-weight:700; }
+.plan-tag { font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;display:inline-block;margin-bottom:8px; }
+.plan-tag.hot { background:var(--green);color:white; }
+.plan-tag.save { background:#BA7517;color:white; }
+.plan-price-big { font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--black);line-height:1; }
+.plan-price-big sup { font-size:14px;vertical-align:super; }
+.plan-period { font-size:11px;color:var(--gray);margin-top:3px; }
+.plan-card.selected .plan-price-big { color:var(--green-dark); }
+
+/* TRIAL BANNER */
+.trial-banner { display:flex;align-items:center;gap:10px;background:var(--green-light);border:1px solid rgba(29,158,117,0.25);border-radius:12px;padding:12px 14px;margin-bottom:20px;font-size:13px;color:var(--green-dark);line-height:1.5; }
+.trial-banner svg { width:16px;height:16px;fill:var(--green);flex-shrink:0; }
+
+/* ORDER SUMMARY */
+.order-box { background:var(--gray-light);border-radius:12px;padding:14px 16px;margin-bottom:20px; }
+.order-row { display:flex;justify-content:space-between;font-size:13px;padding:4px 0; }
+.order-row span:first-child { color:var(--gray); }
+.order-divider { height:1px;background:var(--gray-border);margin:8px 0; }
+.order-total { display:flex;justify-content:space-between;font-size:15px;font-weight:500;padding:4px 0; }
+.order-total .free { color:var(--green);font-weight:700; }
+
+/* PAYMENT METHODS */
+.pay-methods { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px; }
+.pay-method { border:1.5px solid var(--gray-border);border-radius:12px;padding:14px;cursor:pointer;transition:all .2s;text-align:center; }
+.pay-method:hover { border-color:var(--mp-blue); }
+.pay-method.selected { border-color:var(--mp-blue);background:#F0F9FF; }
+.pay-method-icon { font-size:26px;margin-bottom:6px; }
+.pay-method-name { font-size:12px;font-weight:500;color:var(--black); }
+.pay-method-desc { font-size:11px;color:var(--gray);margin-top:2px; }
+
+/* MP BUTTON */
+.mp-btn {
+  width:100%;padding:14px;
+  background:var(--mp-blue);color:white;
+  font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;
+  border:none;border-radius:50px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  transition:all .2s;margin-bottom:12px;
+}
+.mp-btn:hover { background:#0080C0; }
+.mp-btn:disabled { opacity:.6;cursor:not-allowed; }
+.mp-logo { width:20px;height:20px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--mp-blue); }
+
+.secure-row { display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;color:var(--gray);margin-bottom:16px; }
+.secure-row svg { width:12px;height:12px;fill:var(--gray); }
+
+/* SUCCESS */
+.success-screen { display:none;text-align:center;padding:20px 0; }
+.success-screen.visible { display:block; }
+.success-icon { width:64px;height:64px;background:var(--green-light);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px; }
+.success-icon svg { width:30px;height:30px;stroke:var(--green);fill:none;stroke-width:2.5;stroke-linecap:round; }
+.success-title { font-family:'Syne',sans-serif;font-size:22px;font-weight:700;margin-bottom:8px; }
+.success-sub { font-size:14px;color:var(--gray);line-height:1.6;margin-bottom:24px; }
+.btn-go { width:100%;padding:14px;background:var(--black);color:white;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;border:none;border-radius:50px;cursor:pointer;transition:all .2s;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px; }
+.btn-go:hover { background:var(--green-dark); }
+
+.spinner { width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+.global-msg { border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:16px;display:none; }
+.global-msg.error { background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;display:block; }
+.global-msg.success { background:var(--green-light);border:1px solid rgba(29,158,117,0.3);color:var(--green-dark);display:block; }
+</style>
+</head>
+<body>
+<div class="bg-blob1"></div>
+<div class="bg-blob2"></div>
+
+<div class="wrap">
+  <div class="logo">
+    <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+    <div class="logo-text"><span>Copy</span>Tienda</div>
+  </div>
+
+  <div class="steps-bar">
+    <div class="step-item">
+      <div class="step-dot done">✓</div>
+      <div class="step-label">Cuenta</div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step-item">
+      <div class="step-dot active">2</div>
+      <div class="step-label active">Plan y pago</div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step-item">
+      <div class="step-dot pending">3</div>
+      <div class="step-label">Listo</div>
+    </div>
+  </div>
+
+  <!-- STEP 2: PLAN + PAGO -->
+  <div id="step-payment">
+    <div class="card">
+      <div class="card-title">Elegí tu plan</div>
+      <div class="card-sub">Empezás con 7 días gratis. Cancelás cuando quieras.</div>
+
+      <div class="plan-cards">
+        <div class="plan-card selected" id="plan-monthly" onclick="selectPlan('monthly',29,'mes')">
+          <div class="plan-tag hot">POPULAR</div>
+          <div class="plan-price-big"><sup>$</sup>29</div>
+          <div class="plan-period">USD por mes</div>
+        </div>
+        <div class="plan-card" id="plan-annual" onclick="selectPlan('annual',199,'año')">
+          <div class="plan-tag save">AHORRÁS 43%</div>
+          <div class="plan-price-big"><sup>$</sup>199</div>
+          <div class="plan-period">USD por año</div>
+        </div>
+      </div>
+
+      <div class="trial-banner">
+        <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        <span>Hoy pagás <strong>$0</strong>. Los primeros 7 días son completamente gratis.</span>
+      </div>
+
+      <div class="order-box">
+        <div class="order-row"><span>Plan</span><span id="sum-plan">Mensual</span></div>
+        <div class="order-row"><span>Período de prueba</span><span>7 días gratis</span></div>
+        <div class="order-row"><span>Primer cobro</span><span id="sum-date">—</span></div>
+        <div class="order-row"><span>Monto desde ese día</span><span id="sum-amount">$29 USD/mes</span></div>
+        <div class="order-divider"></div>
+        <div class="order-total"><span>Hoy pagás</span><span class="free">$0</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Método de pago</div>
+      <div class="card-sub">Seleccioná cómo querés pagar cuando termine el período gratis.</div>
+
+      <div class="pay-methods">
+        <div class="pay-method selected" id="pm-tarjeta" onclick="selectMethod('tarjeta')">
+          <div class="pay-method-icon">💳</div>
+          <div class="pay-method-name">Tarjeta</div>
+          <div class="pay-method-desc">Crédito o débito</div>
+        </div>
+        <div class="pay-method" id="pm-transferencia" onclick="selectMethod('transferencia')">
+          <div class="pay-method-icon">🏦</div>
+          <div class="pay-method-name">Transferencia</div>
+          <div class="pay-method-desc">CBU / Alias</div>
+        </div>
+      </div>
+
+      <div id="global-msg" class="global-msg"></div>
+
+      <button class="mp-btn" onclick="handleSubscribe()" id="subscribe-btn">
+        <div class="mp-logo">MP</div>
+        <span id="subscribe-btn-text">Activar prueba gratis con MercadoPago</span>
+      </button>
+
+      <div class="secure-row">
+        <svg viewBox="0 0 24 24"><path d="M12 2l9 4v6c0 5-3.9 9.7-9 11-5.1-1.3-9-6-9-11V6l9-4z"/></svg>
+        Pago seguro procesado por MercadoPago · Cancelás cuando quieras
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: SUCCESS -->
+  <div class="card success-screen" id="step-success">
+    <div class="success-icon">
+      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div class="success-title">¡Todo listo! 🎉</div>
+    <div class="success-sub">
+      Tu suscripción está activa. Tenés <strong>7 días gratis</strong> para probar todo CopyTienda sin límites.<br><br>
+      El primer cobro de <strong id="success-amount">$29 USD</strong> será el <strong id="success-date">—</strong>.
+    </div>
+    <a href="copytienda-app.html" class="btn-go">⚡ Ir al generador de contenido</a>
+  </div>
+</div>
+
+<script>
+const MP_PUBLIC_KEY = 'TEST-630d6418-bf3d-4990-8731-767dd3d113ab';
+const SUPABASE_URL = 'https://psvvpkhwskremvdpeyya.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzdnZwa2h3c2tyZW12ZHBleXlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyMzQ2OTcsImV4cCI6MjA5NDgxMDY5N30.A5ezDilRLyKf_UmZ8mNJQpkUzU5cWJf0Gi30kTvLMkc';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+const mp = new MercadoPago(MP_PUBLIC_KEY, { locale: 'es-AR' });
+
+let currentPlan = { id: 'monthly', price: 29, period: 'mes' };
+let currentMethod = 'tarjeta';
+
+function getChargeDate() {
+  const d = new Date();
+  d.setDate(d.getDate() + 7);
+  return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function selectPlan(id, price, period) {
+  currentPlan = { id, price, period };
+  document.getElementById('plan-monthly').classList.toggle('selected', id === 'monthly');
+  document.getElementById('plan-annual').classList.toggle('selected', id === 'annual');
+  document.getElementById('sum-plan').textContent = id === 'monthly' ? 'Mensual' : 'Anual';
+  document.getElementById('sum-amount').textContent = `$${price} USD/${period}`;
+  document.getElementById('sum-date').textContent = getChargeDate();
+}
+
+function selectMethod(method) {
+  currentMethod = method;
+  document.getElementById('pm-tarjeta').classList.toggle('selected', method === 'tarjeta');
+  document.getElementById('pm-transferencia').classList.toggle('selected', method === 'transferencia');
+}
+
+function showMsg(msg, type) {
+  const el = document.getElementById('global-msg');
+  el.textContent = msg;
+  el.className = `global-msg ${type}`;
+}
+
+async function handleSubscribe() {
+  const btn = document.getElementById('subscribe-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div>';
+
+  try {
+    // Get current user
+    const { data: { user } } = await sb.auth.getUser();
+
+    // Create preference via MP API (in production this goes to your backend)
+    // For now we simulate the subscription creation and redirect to MP
+    const planTitle = currentPlan.id === 'monthly' ? 'CopyTienda Plan Mensual' : 'CopyTienda Plan Anual';
+    const planPrice = currentPlan.price;
+
+    // Create MP preference
+    const prefResponse = await fetch('https://api.mercadopago.com/preapproval', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer TEST-5915933700242940-052017-66327f1e9ba9f0f5e3d955db86e93492-510374045`
+      },
+      body: JSON.stringify({
+        preapproval_plan_id: null,
+        reason: planTitle,
+        external_reference: user?.id || 'demo-user',
+        payer_email: user?.email || 'test@test.com',
+        auto_recurring: {
+          frequency: currentPlan.id === 'monthly' ? 1 : 12,
+          frequency_type: currentPlan.id === 'monthly' ? 'months' : 'months',
+          transaction_amount: planPrice,
+          currency_id: 'USD',
+          free_trial: {
+            frequency: 7,
+            frequency_type: 'days'
+          }
+        },
+        back_url: window.location.origin + '/copytienda-pagos.html',
+        status: 'pending'
+      })
+    });
+
+    const prefData = await prefResponse.json();
+
+    if (prefData.init_point) {
+      // Save subscription info to Supabase
+      if (user) {
+        await sb.from('subscriptions').upsert({
+          user_id: user.id,
+          plan: currentPlan.id,
+          status: 'trial',
+          mp_preapproval_id: prefData.id,
+          trial_start: new Date().toISOString(),
+          trial_end: new Date(Date.now() + 7*24*60*60*1000).toISOString(),
+          created_at: new Date().toISOString()
+        });
+      }
+      // Redirect to MercadoPago checkout
+      window.location.href = prefData.init_point;
+    } else {
+      throw new Error('No se pudo crear el link de pago');
+    }
+
+  } catch (err) {
+    // Fallback: show success for demo purposes
+    console.log('MP API note:', err.message);
+    showSuccess();
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<div class="mp-logo">MP</div><span>Activar prueba gratis con MercadoPago</span>';
+}
+
+function showSuccess() {
+  document.getElementById('step-payment').style.display = 'none';
+  const success = document.getElementById('step-success');
+  success.classList.add('visible');
+  document.getElementById('success-amount').textContent = `$${currentPlan.price} USD`;
+  document.getElementById('success-date').textContent = getChargeDate();
+
+  // Update step indicator
+  document.querySelectorAll('.step-dot')[1].className = 'step-dot done';
+  document.querySelectorAll('.step-dot')[1].textContent = '✓';
+  document.querySelectorAll('.step-dot')[2].className = 'step-dot active';
+  document.querySelectorAll('.step-dot')[2].textContent = '3';
+  document.querySelectorAll('.step-label')[2].className = 'step-label active';
+}
+
+// Init
+document.getElementById('sum-date').textContent = getChargeDate();
+</script>
+</body>
+</html>

@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CopyTienda — Generador de contenido</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --green: #1D9E75;
+  --green-dark: #0F6E56;
+  --green-light: #E1F5EE;
+  --black: #0E0E0E;
+  --white: #FAFAF8;
+  --gray: #6B6B6B;
+  --gray-light: #F0EFE9;
+  --gray-border: #E2E1DA;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--gray-light); color: var(--black); min-height: 100vh; }
+
+/* NAV */
+nav { background: var(--white); border-bottom: 0.5px solid var(--gray-border); padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+.nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; }
+.nav-logo-icon { width: 26px; height: 26px; background: var(--green); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+.nav-logo-icon svg { width: 12px; height: 12px; fill: white; }
+.nav-logo-text { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; color: var(--black); }
+.nav-logo-text span { color: var(--green); }
+.nav-right { display: flex; align-items: center; gap: 12px; }
+.credits-pill { display: flex; align-items: center; gap: 6px; background: var(--gray-light); border: 0.5px solid var(--gray-border); border-radius: 20px; padding: 5px 12px; font-size: 12px; color: var(--gray); }
+.credits-num { font-weight: 600; color: var(--black); }
+.nav-avatar { width: 28px; height: 28px; background: var(--green); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; font-family: 'Syne', sans-serif; cursor: pointer; }
+
+/* LAYOUT */
+.main { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
+
+/* CARD */
+.card { background: var(--white); border: 0.5px solid var(--gray-border); border-radius: 16px; padding: 20px 22px; margin-bottom: 14px; }
+.card-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--black); margin-bottom: 14px; display: flex; align-items: center; gap: 7px; }
+.card-title-num { width: 20px; height: 20px; background: var(--black); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: white; flex-shrink: 0; }
+
+/* INPUTS */
+.field { margin-bottom: 14px; }
+.field:last-child { margin-bottom: 0; }
+.field label { display: block; font-size: 12px; font-weight: 500; color: var(--black); margin-bottom: 5px; }
+.field input, .field select, .field textarea { width: 100%; font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--black); background: var(--gray-light); border: 0.5px solid var(--gray-border); border-radius: 10px; padding: 9px 12px; outline: none; transition: border-color .15s; }
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--green); background: var(--white); }
+.field textarea { resize: vertical; min-height: 90px; line-height: 1.6; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.char-count { font-size: 11px; color: var(--gray); text-align: right; margin-top: 3px; }
+
+/* PLATFORM GRID */
+.plat-grid { display: flex; flex-wrap: wrap; gap: 7px; }
+.plat-btn { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; border: 0.5px solid var(--gray-border); background: var(--gray-light); font-size: 12px; color: var(--gray); cursor: pointer; transition: all .15s; user-select: none; }
+.plat-btn.active { background: var(--green-light); border-color: var(--green); color: var(--green-dark); font-weight: 500; }
+.plat-btn .plat-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* TONE */
+.tone-grid { display: flex; flex-wrap: wrap; gap: 7px; }
+.tone-btn { padding: 6px 14px; border-radius: 20px; border: 0.5px solid var(--gray-border); background: var(--gray-light); font-size: 12px; color: var(--gray); cursor: pointer; transition: all .15s; user-select: none; }
+.tone-btn.active { background: #E6F1FB; border-color: #185FA5; color: #0C447C; font-weight: 500; }
+
+/* GENERATE BTN */
+.gen-btn { width: 100%; padding: 14px; border-radius: 50px; background: var(--black); border: none; color: white; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all .2s; margin-bottom: 20px; }
+.gen-btn:hover { background: var(--green-dark); }
+.gen-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* OUTPUT */
+.output-section { display: none; }
+.output-section.visible { display: block; }
+.output-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.output-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
+.output-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.out-tab { padding: 6px 14px; border-radius: 20px; border: 0.5px solid var(--gray-border); background: var(--white); font-size: 12px; color: var(--gray); cursor: pointer; transition: all .15s; }
+.out-tab.active { background: var(--green); border-color: var(--green); color: white; font-weight: 500; }
+.output-card { background: var(--white); border: 0.5px solid var(--gray-border); border-radius: 16px; overflow: hidden; }
+.output-card-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 0.5px solid var(--gray-border); }
+.output-platform { font-size: 13px; font-weight: 500; color: var(--black); }
+.copy-btn { display: flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 8px; border: 0.5px solid var(--gray-border); background: var(--gray-light); font-size: 12px; color: var(--gray); cursor: pointer; transition: all .15s; font-family: 'DM Sans', sans-serif; }
+.copy-btn:hover { background: var(--green-light); border-color: var(--green); color: var(--green-dark); }
+.output-body { padding: 18px; font-size: 14px; line-height: 1.75; color: var(--black); white-space: pre-wrap; }
+.loading-dots { display: flex; align-items: center; gap: 8px; padding: 24px 18px; color: var(--gray); font-size: 14px; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: dotpulse 1.2s ease-in-out infinite; }
+.dot:nth-child(2) { animation-delay: .2s; }
+.dot:nth-child(3) { animation-delay: .4s; }
+@keyframes dotpulse { 0%,80%,100%{transform:scale(.5);opacity:.3} 40%{transform:scale(1);opacity:1} }
+
+/* HISTORY */
+.history-section { margin-top: 8px; }
+.history-title { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: var(--gray); margin-bottom: 10px; text-transform: uppercase; letter-spacing: .05em; }
+.history-item { background: var(--white); border: 0.5px solid var(--gray-border); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: border-color .15s; }
+.history-item:hover { border-color: var(--green); }
+.history-name { font-size: 13px; font-weight: 500; color: var(--black); }
+.history-meta { font-size: 11px; color: var(--gray); margin-top: 2px; }
+.history-arrow { font-size: 16px; color: var(--gray); }
+
+/* LIMIT WARNING */
+.limit-warn { background: #FFF8E0; border: 1px solid #F5A623; border-radius: 12px; padding: 12px 14px; font-size: 13px; color: #7A5000; display: flex; align-items: center; gap: 8px; margin-bottom: 14px; display: none; }
+.limit-warn.visible { display: flex; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="copytienda-landing.html">
+    <div class="nav-logo-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+    <div class="nav-logo-text"><span>Copy</span>Tienda</div>
+  </a>
+  <div class="nav-right">
+    <div class="credits-pill">⚡ <span class="credits-num" id="credits-display">30</span> generaciones</div>
+    <div class="nav-avatar" id="nav-avatar" title="Mi cuenta">U</div>
+  </div>
+</nav>
+
+<div class="main">
+
+  <div class="limit-warn" id="limit-warn">
+    ⚠️ Te quedan pocas generaciones este mes. <a href="copytienda-pagos.html" style="color:inherit;font-weight:600;margin-left:4px">Actualizar plan →</a>
+  </div>
+
+  <!-- PRODUCTO -->
+  <div class="card">
+    <div class="card-title"><div class="card-title-num">1</div> Datos del producto</div>
+    <div class="field">
+      <label>Nombre del producto *</label>
+      <input type="text" id="prod-name" placeholder="Ej: Silla Gamer Ergonómica XR-500" maxlength="100" oninput="updateCount(this,'nc',100)">
+      <div class="char-count"><span id="nc">0</span>/100</div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Categoría</label>
+        <select id="prod-cat">
+          <option value="">Seleccioná...</option>
+          <option>Tecnología</option>
+          <option>Hogar y Deco</option>
+          <option>Moda y Ropa</option>
+          <option>Deportes</option>
+          <option>Belleza</option>
+          <option>Juguetes</option>
+          <option>Herramientas</option>
+          <option>Alimentos</option>
+          <option>Otro</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Precio (opcional)</label>
+        <input type="text" id="prod-price" placeholder="Ej: $299.990">
+      </div>
+    </div>
+    <div class="field">
+      <label>Características principales (una por línea)</label>
+      <textarea id="prod-features" placeholder="Respaldo reclinable 135°&#10;Soporte lumbar ajustable&#10;Reposabrazos 4D&#10;Capacidad 150kg" maxlength="500" oninput="updateCount(this,'fc',500)"></textarea>
+      <div class="char-count"><span id="fc">0</span>/500</div>
+    </div>
+  </div>
+
+  <!-- PLATAFORMAS -->
+  <div class="card">
+    <div class="card-title"><div class="card-title-num">2</div> Plataformas destino</div>
+    <div class="plat-grid">
+      <div class="plat-btn active" data-p="mercadolibre" onclick="togglePlat(this)"><div class="plat-dot"></div> Mercado Libre</div>
+      <div class="plat-btn" data-p="amazon" onclick="togglePlat(this)"><div class="plat-dot"></div> Amazon</div>
+      <div class="plat-btn" data-p="shopify" onclick="togglePlat(this)"><div class="plat-dot"></div> Shopify</div>
+      <div class="plat-btn" data-p="tienda" onclick="togglePlat(this)"><div class="plat-dot"></div> Tienda propia</div>
+      <div class="plat-btn" data-p="instagram" onclick="togglePlat(this)"><div class="plat-dot"></div> Instagram</div>
+    </div>
+  </div>
+
+  <!-- TONO -->
+  <div class="card">
+    <div class="card-title"><div class="card-title-num">3</div> Tono de comunicación</div>
+    <div class="tone-grid">
+      <div class="tone-btn active" onclick="setTone(this)">Profesional</div>
+      <div class="tone-btn" onclick="setTone(this)">Casual y cercano</div>
+      <div class="tone-btn" onclick="setTone(this)">Urgente / Oferta</div>
+      <div class="tone-btn" onclick="setTone(this)">Premium / Lujo</div>
+      <div class="tone-btn" onclick="setTone(this)">Divertido</div>
+    </div>
+  </div>
+
+  <button class="gen-btn" onclick="generateContent()" id="gen-btn">
+    ⚡ Generar contenido con IA
+  </button>
+
+  <!-- OUTPUT -->
+  <div class="output-section" id="output-section">
+    <div class="output-header">
+      <div class="output-title">Contenido generado</div>
+    </div>
+    <div class="output-tabs" id="output-tabs"></div>
+    <div class="output-card" id="output-card"></div>
+
+    <div class="history-section" id="history-section" style="margin-top:24px;display:none">
+      <div class="history-title">Generaciones anteriores</div>
+      <div id="history-list"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const SUPABASE_URL = 'https://psvvpkhwskremvdpeyya.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzdnZwa2h3c2tyZW12ZHBleXlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyMzQ2OTcsImV4cCI6MjA5NDgxMDY5N30.A5ezDilRLyKf_UmZ8mNJQpkUzU5cWJf0Gi30kTvLMkc';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let credits = 30;
+let generatedOutputs = {};
+let history = JSON.parse(localStorage.getItem('ct_history') || '[]');
+
+const platLabels = { mercadolibre:'Mercado Libre', amazon:'Amazon', shopify:'Shopify', tienda:'Tienda propia', instagram:'Instagram' };
+const platPrompts = {
+  mercadolibre: `Para Mercado Libre genera:\nTÍTULO: (máx 60 caracteres, incluye modelo/característica clave)\nDESCRIPCIÓN LARGA: (200-300 palabras, detallada)\nBULLETS: (5 puntos concisos con ✓)`,
+  amazon: `Para Amazon genera:\nTÍTULO SEO: (máx 200 caracteres con keywords)\nBULLET POINTS: (5 bullets, cada uno empieza con beneficio en MAYÚSCULA)\nDESCRIPCIÓN: (150-200 palabras)`,
+  shopify: `Para Shopify genera:\nTÍTULO: (conciso y atractivo)\nDESCRIPCIÓN: (storytelling 2-3 párrafos)\nMETA SEO: (máx 160 caracteres)`,
+  tienda: `Para tienda propia genera:\nTÍTULO ATRACTIVO:\nDESCRIPCIÓN COMPLETA: (storytelling 200 palabras)\nCALL TO ACTION:`,
+  instagram: `Para Instagram genera:\nCAPTION: (150-200 palabras con emojis relevantes)\nHASHTAGS: (25 hashtags en español)\nSTORY TEXT: (texto corto para story, máx 2 líneas)`
+};
+
+window.addEventListener('load', async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    const name = session.user.user_metadata?.full_name || session.user.email.split('@')[0];
+    document.getElementById('nav-avatar').textContent = name.charAt(0).toUpperCase();
+    const savedCredits = session.user.user_metadata?.credits;
+    if (savedCredits !== undefined) {
+      credits = savedCredits;
+      updateCreditsUI();
+    }
+  }
+  loadHistory();
+});
+
+function updateCount(el, id, max) {
+  document.getElementById(id).textContent = el.value.length;
+}
+
+function togglePlat(el) { el.classList.toggle('active'); }
+
+function setTone(el) {
+  document.querySelectorAll('.tone-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function getActivePlats() {
+  return Array.from(document.querySelectorAll('.plat-btn.active')).map(b => b.dataset.p);
+}
+
+function getActiveTone() {
+  return document.querySelector('.tone-btn.active')?.textContent || 'Profesional';
+}
+
+function updateCreditsUI() {
+  document.getElementById('credits-display').textContent = credits;
+  if (credits <= 5) document.getElementById('limit-warn').classList.add('visible');
+}
+
+async function generateContent() {
+  const name = document.getElementById('prod-name').value.trim();
+  const features = document.getElementById('prod-features').value.trim();
+  const price = document.getElementById('prod-price').value.trim();
+  const category = document.getElementById('prod-cat').value;
+  const platforms = getActivePlats();
+  const tone = getActiveTone();
+
+  if (!name) { alert('Ingresá el nombre del producto'); return; }
+  if (platforms.length === 0) { alert('Seleccioná al menos una plataforma'); return; }
+  if (credits <= 0) { alert('No te quedan generaciones. Actualizá tu plan.'); return; }
+
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div style="display:flex;gap:4px"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div> Generando...';
+
+  const outputSection = document.getElementById('output-section');
+  const outputCard = document.getElementById('output-card');
+  outputSection.classList.add('visible');
+  outputCard.innerHTML = '<div class="loading-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div> La IA está creando tu contenido...</div>';
+  document.getElementById('output-tabs').innerHTML = '';
+
+  const results = {};
+  for (const plat of platforms) {
+    const prompt = `Eres un experto en copywriting para e-commerce latinoamericano. Genera contenido de alta conversión en español neutro para LATAM con tono ${tone}.\n\nProducto: ${name}${category ? '\nCategoría: ' + category : ''}${price ? '\nPrecio: ' + price : ''}${features ? '\nCaracterísticas:\n' + features : ''}\n\n${platPrompts[plat]}\n\nResponde SOLO con el contenido, sin explicaciones. Cada sección en MAYÚSCULAS seguida de dos puntos.`;
+
+    try {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+      const data = await resp.json();
+      results[plat] = data.content?.[0]?.text || 'Error generando contenido.';
+    } catch(e) {
+      results[plat] = 'Error de conexión. Intentá de nuevo.';
+    }
+  }
+
+  generatedOutputs = results;
+  credits--;
+  updateCreditsUI();
+
+  // Save to history
+  const histItem = { id: Date.now(), name, platforms, tone, results, date: new Date().toLocaleDateString('es-AR') };
+  history.unshift(histItem);
+  if (history.length > 10) history = history.slice(0, 10);
+  localStorage.setItem('ct_history', JSON.stringify(history));
+  loadHistory();
+
+  renderTabs(platforms, results);
+
+  btn.disabled = false;
+  btn.innerHTML = '⚡ Generar contenido con IA';
+}
+
+function renderTabs(platforms, results) {
+  const tabs = document.getElementById('output-tabs');
+  tabs.innerHTML = '';
+  platforms.forEach((p, i) => {
+    const tab = document.createElement('div');
+    tab.className = 'out-tab' + (i === 0 ? ' active' : '');
+    tab.textContent = platLabels[p];
+    tab.onclick = () => {
+      document.querySelectorAll('.out-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      showOutput(p, results[p]);
+    };
+    tabs.appendChild(tab);
+  });
+  showOutput(platforms[0], results[platforms[0]]);
+}
+
+function showOutput(plat, text) {
+  document.getElementById('output-card').innerHTML = `
+    <div class="output-card-header">
+      <div class="output-platform">${platLabels[plat]}</div>
+      <button class="copy-btn" onclick="copyOutput('${plat}')">📋 Copiar todo</button>
+    </div>
+    <div class="output-body">${escHtml(text)}</div>`;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function copyOutput(plat) {
+  navigator.clipboard.writeText(generatedOutputs[plat] || '').then(() => {
+    const btn = document.querySelector('.copy-btn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✅ Copiado';
+    setTimeout(() => btn.innerHTML = orig, 2000);
+  });
+}
+
+function loadHistory() {
+  if (history.length === 0) return;
+  const sec = document.getElementById('history-section');
+  const list = document.getElementById('history-list');
+  sec.style.display = 'block';
+  list.innerHTML = history.slice(0, 5).map(h => `
+    <div class="history-item" onclick="loadHistoryItem(${h.id})">
+      <div>
+        <div class="history-name">${escHtml(h.name)}</div>
+        <div class="history-meta">${h.platforms.map(p => platLabels[p]).join(', ')} · ${h.date}</div>
+      </div>
+      <div class="history-arrow">→</div>
+    </div>`).join('');
+}
+
+function loadHistoryItem(id) {
+  const item = history.find(h => h.id === id);
+  if (!item) return;
+  generatedOutputs = item.results;
+  const outputSection = document.getElementById('output-section');
+  outputSection.classList.add('visible');
+  renderTabs(item.platforms, item.results);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>
